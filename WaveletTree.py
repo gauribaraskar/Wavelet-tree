@@ -27,9 +27,9 @@ class WaveletTree:
 		right_alphabet = alphabet[half:]
 
 		string_to_bit = []
-		print(string)
+		#print(string)
 		[string_to_bit.append('0' if c in left_alphabet else '1') for c in string]
-		print(''.join(string_to_bit))
+		#print(''.join(string_to_bit))
 		node.add_bit(''.join(string_to_bit))
 
 		# Split data for left and right node
