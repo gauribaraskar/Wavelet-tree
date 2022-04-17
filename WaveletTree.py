@@ -1,4 +1,9 @@
 from WaveletTreeNode import WaveletTreeNode
+import networkx as nx
+import pydot
+#xfrom networkx import to_agraph
+#from networkx.drawing.nx_pydot import spring_layout
+import matplotlib.pyplot as plt
 
 '''
 Wavelet tree data structure:
@@ -58,4 +63,24 @@ class WaveletTree:
 			print(node.bit_vector,node.alphabet)
 			WaveletTree.__preorder(node.left)
 			WaveletTree.__preorder(node.right)
+
+	@staticmethod
+	def __add_edges(node,g):
+		if node and node.bit_vector!='':
+			g.add_node(str(node.bit_vector))
+			if node.parent:
+				g.add_edge(str(node.parent.bit_vector),str(node.bit_vector))
+			#print(node.bit_vector,node.alphabet)
+			WaveletTree.__add_edges(node.left,g)
+			WaveletTree.__add_edges(node.right,g)
+		return g
+
+	def visualize_tree(self):
+		G = nx.DiGraph()
+		G = self.__add_edges(self.root,G)
+		#print(edges)
+		A = nx.nx_agraph.to_agraph(G)
+		nx.draw(G, node_size=600, node_color='w', alpha=0.4, node_shape='d')
+		A.layout('dot', args='-Nfontsize=10 -Nwidth=".2" -Nheight=".2" -Nmargin=0 -Gfontsize=8')
+		A.draw('test.png')
 

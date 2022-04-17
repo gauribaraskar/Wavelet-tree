@@ -21,6 +21,9 @@ if __name__ == '__main__':
     tree = WaveletTree()
     tree.build(input_file.data,alphabet)
 
-    tree.preorder_traversal()
+    ## Printing the tree
+    tree.visualize_tree()
+
+    
 
     
