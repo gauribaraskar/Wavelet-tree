@@ -16,14 +16,26 @@ if __name__ == '__main__':
     # Construct alphabet from data string
     alphabet = list(set(input_file.data))
     # not necessary
-    #alphabet.sort()
+    alphabet.sort()
 
     tree = WaveletTree()
     tree.build(input_file.data,alphabet)
 
-    ## Printing the tree
-    tree.visualize_tree()
+    # Printing the tree
+    #tree.visualize_tree()
+    # i = 10
+    # s = 'a'
+    # rank = tree.rank(s,i)
+    # print("Rank of character %s till position %d is %d" % (s,i,rank))
+
+    i = 3
+    s = 'c'
+    position = tree.select(s,i)
+    print("The answer to select query is %s" % position)
+
 
     
+
+
 
     
