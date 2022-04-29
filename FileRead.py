@@ -8,9 +8,11 @@ class FileRead:
     def read(self):
         file = open(self.file_path, 'r')
 
-        for line in file: 
-            for c in line:
-                if c.isalpha():
-                    self.data.append(c)
+        with file as f:
+            lines = f.readlines()
+            for line in lines:
+                for c in line:
+                    if c != '\n':
+                        self.data.append(c)
 
         file.close()

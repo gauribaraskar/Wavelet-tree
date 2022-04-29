@@ -9,6 +9,8 @@ class WaveletTreeNode:
         self.left = None
         self.right = None
         self.parent = parent
+        self.rank_chunk_0 = []
+        self.rank_sub_chunk_0 = []
 
     def add_bit(self,bit):
         self.bit_vector += bit
