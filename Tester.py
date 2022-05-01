@@ -1,101 +1,115 @@
 import sys
-
-from FileRead import FileRead
 from WaveletTree import WaveletTree
-#from multiprocessing import Process, Queue
-import time
-import matplotlib.pyplot as plt
-import os 
-import psutil
-import random
-import threading
+from FileRead import FileRead
+
+class Tester():
+    def __init__(self,input_file,testcases_file,output_file,generated_output_file):
+        self.input_file = input_file
+        self.testcase_file = testcases_file
+        self.output_file = output_file
+        self.generated_output_file = generated_output_file
+
+    def test(self):
+
+        output_file = open(self.generated_output_file,'w')
+        
+        input_file = FileRead(self.input_file)
+        input_file.read()
+
+        string = input_file.data
+
+        alphabet = list(set(input_file.data))
+
+        #print("string ",string)
+
+        testcase_file = open(self.testcase_file,'r')
+
+        number_of_test_cases = int(testcase_file.readline())
+
+        for i in range(number_of_test_cases):
+            start_index, end_index = testcase_file.readline().split()
+
+            #print(start_index,end_index)
+
+            start_index = int(start_index)
+            end_index = int(end_index)
+            
+            substring = string[start_index-1:end_index]
+            #print(substring)
+            alphabet = list(set(substring))
+
+            #print(substring)
+            # only for debugging
+            alphabet.sort()
+
+            #print(alphabet)
+
+            tree = WaveletTree()
+            tree.build(substring,alphabet)
+
+            #tree.visualize_tree()
+
+            number_of_queries = int(testcase_file.readline())
+
+            for j in range(number_of_queries):
+
+                #print("Query number: ",j)
+                current_query = testcase_file.readline()
+                current_query_args = current_query.split()
+                current_query_type = current_query_args[0]
+
+                if current_query_type == 'R':
+                    pos = int(current_query_args[1])
+                    char = current_query_args[2]
+                    rank = tree.rank(char,pos,True)
+                    output_file.write(str(rank) + "\n")
+                elif current_query_type == 'S':
+                    occ = int(current_query_args[1])
+                    char = current_query_args[2]
+                    select = tree.select(char,occ,True)
+                    output_file.write(str(select) + "\n")
+                elif current_query_type == 'A':
+                    pos = int(current_query_args[1])
+                    access = tree.access(pos)
+                    output_file.write(str(access) + "\n")
+
+        output_file.close()
+
+
+    def diff(self):
+
+        actual_output = open(self.output_file,'r')
+        generated_output = open(self.generated_output_file,'r')
+
+        line_1 = actual_output.readline()
+        line_2 = generated_output.readline()
+
+
+        testcases_count = 0
+        failed = 0
+        while line_1 or line_2:
+
+            if line_1 != line_2:
+                #print(line_1,line_2)
+                failed += 1
+
+            line_1 = actual_output.readline()
+            line_2 = generated_output.readline()
+
+            testcases_count += 1
+
+        print("%d test cases failed out of %d."  % (failed,testcases_count))
+
+
 
 
 if __name__ == '__main__':
-
-    if len(sys.argv) < 2:
-        print('Missing arguments!')
-        exit(-1)
-
-    input_file = FileRead(sys.argv[1])
-    input_file.read()
-
-    # Construct alphabet from data string
-    alphabet = list(set(input_file.data))
-    # not necessary
-    alphabet.sort()
-
-    tree = WaveletTree()
-    tree.build(input_file.data,alphabet)
-
-    # Printing the tree and testing the tree
-    #tree.preorder_traversal()
-    #tree.visualize_tree()
-
-
-    #Writing results to a file
-    output_file = open('5MB.txt','w')
-
-    # Read queries through file and plot graphs for time
-    query_file = open('query.txt', 'r')
-    
-    # Store time for jacobsons and normal query
-    position = []
-    characters = []
-    count = 0
-    while True:
-        count += 1
-     
-        # Get next line from file
-        line = query_file.readline()
-     
-        # if line is empty
-        # end of file is reached
-        if not line:
-            break
-
-        args = line.split()
-        if args[0] == 'R':
-            i = int(args[1])
-            s = args[2]
-
-            positions.append(i)
-            characters.append(s)
-
-            output_file.write("Naive Rank\n")
-            start_time = time.time()
-            rank = tree.rank(s,i,False)
-            print("Rank of character %s till position %d is %d" % (s,i,rank))
-            end_time = time.time()
-            output_file.write(str(end_time - start_time))
-            output_file.write("\n")
-
-
-            output_file.write("Jacobsons Rank\n")
-            # print("Jacobsons")
-            start_time = time.time()
-            rank = tree.rank(s,i,True)
-            print("Rank of character %s till position %d is %d" % (s,i,rank))
-            end_time = time.time()
-            output_file.write(str(end_time - start_time))
-            output_file.write("\n")
-        else:
-            continue
-        #print("Line{}: {}".format(count, line.strip()))
- 
-    query_file.close()  
+    tester = Tester('input.txt','testcases.txt','out.txt','wavelet-out.txt')
+    tester.test()
+    tester.diff()
 
 
 
-    #for position,character in zip(positions,characters):
-
-
-    #Plot the times
-    # print(jacobsons_query_time)
-    print(naive_query_times)
-    # plt.plot(range(1,len(jacobsons_query_time)), jacobsons_query_time, 'g', label='Jacobsons rank')
-    # plt.plot(range(1,len(naive_query_times)), naive_query_times, 'b', label='Naive rank')    
-    # plt.show()
 
     
 

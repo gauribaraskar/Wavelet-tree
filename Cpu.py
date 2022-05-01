@@ -17,3 +17,4 @@ class CPU():
 		self.end_time = time.time()
 
 	# Add memory usage here
+	

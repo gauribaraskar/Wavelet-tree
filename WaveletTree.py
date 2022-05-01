@@ -5,6 +5,7 @@ from networkx.drawing.nx_agraph import graphviz_layout
 import matplotlib.pyplot as plt
 import math
 import time
+from bisect import bisect_left
 
 
 class WaveletTree:
@@ -12,21 +13,31 @@ class WaveletTree:
 		self.root = None
 
 	def build(self,string,alphabet):
-		#print(string)
 		self.root = WaveletTreeNode(alphabet)
+		#print(string)
 		self.__build(self.root,alphabet,string)
 	
 	def rank(self, c, i,Jacobsons=False):
+		if c not in self.root.alphabet:
+			return -1
+		if i > len(self.root.bit_vector):
+			return -1
 		return WaveletTree.__rank(self.root, c, i,Jacobsons)
 
 	def access(self,i):
+		if i > len(self.root.bit_vector):
+			return -1
 		return WaveletTree.__access(self.root,i-1)
 
-	def select(self,c,occ_number):
-		return WaveletTree.__select(self.root,c,occ_number)
+	def select(self,c,occ_number,Optimized=False):
+		if c not in self.root.alphabet:
+			return -1
+		return WaveletTree.__select(self.root,c,occ_number,Optimized)
 
 	@staticmethod
 	def __build(node,alphabet,string):
+
+		#print(string)
 	
 		N = len(string) 
 
@@ -43,11 +54,13 @@ class WaveletTree:
 		[string_to_bit.append('0' if c in left_alphabet else '1') for c in string]
 		node.add_bit(''.join(string_to_bit))
 
+		#print(node.bit_vector)
+
 		# add for jacobsons rank
 		block_size = math.ceil(math.log(N,2))
 		num_blocks = math.ceil(N/block_size)
 
-
+		#print(N,block_size,num_blocks)
 		for i in range(0, N, block_size):
 			chunk = string_to_bit[i:i+block_size]
 			if not node.rank_chunk_0:
@@ -59,9 +72,15 @@ class WaveletTree:
 
 			sub_block_size = math.ceil(block_size / 2)
 			intermediate_list_0 = []
+			#print(len(chunk))
 			for j in range(0,len(chunk),sub_block_size):
-				block_start = i + j * sub_block_size
-				sub_chunk = string_to_bit[block_start:block_start+sub_block_size]
+				sub_block_start = i + j
+				end_index = sub_block_start + sub_block_size
+				#print("POOOOOOOO ",i,j,sub_block_start,end_index)
+				if end_index  > i + block_size:
+					end_index = i + block_size
+				sub_chunk = node.bit_vector[sub_block_start:end_index]
+				#print(sub_chunk)
 				if not intermediate_list_0:
 					intermediate_list_0.append((sum(1 for b in sub_chunk if b=='0'),len(sub_chunk)))
 				else:
@@ -69,6 +88,8 @@ class WaveletTree:
 					intermediate_list_0.append((s,intermediate_list_0[-1][1] + len(sub_chunk)))
 
 			node.rank_sub_chunk_0.append(intermediate_list_0)
+
+
 		# print(node.alphabet)
 		# print(node.rank_chunk_0)
 		# print(node.rank_sub_chunk_0)
@@ -141,92 +162,122 @@ class WaveletTree:
 
 		N = len(node.bit_vector)
 
-		# binary rank calculation
-		# count the number of bit until this point
-		# try jacobsons rank for faster query times
 		if not Jacobsons:
 			new_i = WaveletTree.binary_rank(node.bit_vector[:i],bit_for_c)
 		else:
+
 			block_size = math.ceil((math.log(N,2)))
-			chunk_id = i // block_size
 			sub_block_size = math.ceil(block_size / 2)
-			#print(chunk_id)
-			chunk_id = chunk_id - 1
 
-			# print("HELLO")
-			# print(chunk_id)
-			if chunk_id > 0:		
-				product = (chunk_id+1) * block_size
-				remaining = i - product
+			if c_in_left_child:
 
-				#print("Remaining ",remaining)
-				sub_block_id = remaining // sub_block_size
-				sub_block_id -= 1
+				chunk_id = i // block_size
+				#chunk_id -= 1
 
+				if chunk_id==0:
+					# search in sub blocks
+					rank_sub_chunk_0 = node.rank_sub_chunk_0[0]
+					sub_chunk_id = i // sub_block_size
 
-				#print(sub_block_id)
-				
-				# TODO: Make last addition a lookup 
+					if sub_chunk_id == 0:
 
-				block_sum = node.rank_chunk_0[chunk_id][0]
-				current_block_size = node.rank_chunk_0[chunk_id][1]
-				sub_block_sum = node.rank_sub_chunk_0[chunk_id+1][sub_block_id][0]
-				current_sub_block_size = node.rank_sub_chunk_0[chunk_id+1][sub_block_id][1]
+						#current_sub_block_size = rank_sub_chunk_0[0][1]
+						bit_vector = node.bit_vector[0:i]
+						current_rank = WaveletTree.binary_rank(bit_vector,bit_for_c)
+						new_i = current_rank
 
-				# print("WHATS1")
-				#print("PLSSS ",node.rank_chunk_0[chunk_id][0],node.rank_chunk_0[chunk_id][1])
-				# print(sub_block_sum,sub_block_size)
-
-				if sub_block_id > 0:
-
-					remaining = remaining - sub_block_size * (sub_block_id+1)
-					product += sub_block_size * (sub_block_id+1)
-					remaining_chunk = node.bit_vector[product:product+remaining]
-					
-					if c_in_left_child:
-						#print("here1")
-						new_i = block_sum + sub_block_sum + sum(1 for b in remaining_chunk if b=='0')
 					else:
-						#print("here2")
-						new_i = current_block_size - block_sum + current_sub_block_size - sub_block_sum + sum(1 for b in remaining_chunk if b=='1')
+
+						current_rank = rank_sub_chunk_0[sub_chunk_id-1][0]
+						remaining = i - rank_sub_chunk_0[sub_chunk_id-1][1]
+
+						start = rank_sub_chunk_0[sub_chunk_id-1][1]
+						#end = rank_sub_chunk_0[sub_chunk_id][1]
+						next_sub_chunk_bit_vector = node.bit_vector[start:start+remaining]
+
+						current_rank += WaveletTree.binary_rank(next_sub_chunk_bit_vector,bit_for_c)
+						new_i = current_rank
 				else:
 
-					remaining_chunk = node.bit_vector[product:product+remaining]
+					current_rank = node.rank_chunk_0[chunk_id-1][0]
+					remaining = i - node.rank_chunk_0[chunk_id-1][1]
+					# search in sub chunks
+					rank_sub_chunk_0 = node.rank_sub_chunk_0[chunk_id]
+					sub_chunk_id = remaining // sub_block_size
 
-					if c_in_left_child:			
-						new_i = block_sum + sum(1 for b in remaining_chunk if b=='0')
+					if sub_chunk_id == 0:
+
+						start = node.rank_chunk_0[chunk_id-1][1]
+
+						#current_sub_block_size = rank_sub_chunk_0[sub_chunk_id][1]
+						bit_vector = node.bit_vector[start:start + remaining]
+						current_rank += WaveletTree.binary_rank(bit_vector,bit_for_c)
+						new_i = current_rank
+
 					else:
-						#print("WRONG ",block_size - block_sum)	
-						new_i = current_block_size - block_sum + sum(1 for b in remaining_chunk if b=='1')
+						current_rank += rank_sub_chunk_0[sub_chunk_id-1][0]
+						remaining -= rank_sub_chunk_0[sub_chunk_id-1][1]
+						start = node.rank_chunk_0[chunk_id-1][1] + rank_sub_chunk_0[sub_chunk_id-1][1]
+						#end = rank_sub_chunk_0[sub_chunk_id][1]
+						next_sub_chunk_bit_vector = node.bit_vector[start:start+remaining]
+
+						current_rank += WaveletTree.binary_rank(next_sub_chunk_bit_vector,bit_for_c)
+						new_i =  current_rank
 			else:
-				# in first block	
-				#print("geggegeg")
-				sub_block_id = i // sub_block_size
-				sub_block_id -= 1
-				product = 0 
-				if sub_block_id > 0:
+				chunk_id = i // block_size
+				#chunk_id -= 1
+				if chunk_id==0:
+					# search in sub blocks
+					rank_sub_chunk_1 = [(x[1]-x[0],x[1]) for x in node.rank_sub_chunk_0[0]]
+					sub_chunk_id = i // sub_block_size
+					if sub_chunk_id == 0:
 
-					product += sub_block_size * (sub_block_id+1)
-					remaining = i - product
-					remaining_chunk = node.bit_vector[product:product+remaining]
-					sub_block_sum = node.rank_sub_chunk_0[0][sub_block_id][0]
-					current_sub_block_size = node.rank_sub_chunk_0[0][sub_block_id][1]
-					#print(sub_block_sum,sub_block_size)
-					if c_in_left_child:
-						new_i = sub_block_sum + sum(1 for b in remaining_chunk if b=='0')
+						current_sub_block_size = rank_sub_chunk_1[sub_chunk_id][1]
+						bit_vector = node.bit_vector[0:i]
+						current_rank = WaveletTree.binary_rank(bit_vector,bit_for_c)
+						new_i =  current_rank
+
 					else:
-						new_i = current_sub_block_size - sub_block_sum + sum(1 for b in remaining_chunk if b=='1')
+
+						current_rank = rank_sub_chunk_1[sub_chunk_id-1][0]
+						remaining = i - rank_sub_chunk_1[sub_chunk_id-1][1]
+
+						start = rank_sub_chunk_1[sub_chunk_id-1][1]
+						#end = rank_sub_chunk_0[sub_chunk_id][1]
+						next_sub_chunk_bit_vector = node.bit_vector[start:start+remaining]
+
+						current_rank += WaveletTree.binary_rank(next_sub_chunk_bit_vector,bit_for_c)
+						new_i =  current_rank
 				else:
-					remaining_chunk = node.bit_vector[:i]
-					if c_in_left_child:
-						new_i = sum(1 for b in remaining_chunk if b=='0')
-					else:
-						new_i = sum(1 for b in remaining_chunk if b=='1')
 
+					rank_chunk_1 = [(x[1]-x[0],x[1]) for x in node.rank_chunk_0]
+
+					current_rank = rank_chunk_1[chunk_id-1][0]
+					remaining = i - rank_chunk_1[chunk_id-1][1]
+					# search in sub chunks
+					rank_sub_chunk_1 = [(x[1]-x[0],x[1]) for x in node.rank_sub_chunk_0[chunk_id]]
+					sub_chunk_id = remaining // sub_block_size
+					if sub_chunk_id == 0:
+
+						#current_sub_block_size = rank_sub_chunk_1[sub_chunk_id][1]
+						start = rank_chunk_1[chunk_id-1][1]
+						bit_vector = node.bit_vector[start:start + remaining]
+						current_rank += WaveletTree.binary_rank(bit_vector,bit_for_c)
+						new_i =  current_rank
+
+					else:
+
+						current_rank += rank_sub_chunk_1[sub_chunk_id-1][0]
+						remaining -= rank_sub_chunk_1[sub_chunk_id-1][1]
+						start =  rank_chunk_1[chunk_id-1][1] + rank_sub_chunk_1[sub_chunk_id-1][1]
+						#end = rank_sub_chunk_1[sub_chunk_id][1]
+						next_sub_chunk_bit_vector = node.bit_vector[start:start+remaining]
+
+						current_rank += WaveletTree.binary_rank(next_sub_chunk_bit_vector,bit_for_c)
+						new_i =  current_rank
 
 		child = node.left if c_in_left_child else node.right
 
-		#print(new_i)
 		return WaveletTree.__rank(child, c, new_i,Jacobsons)
 
 	def binary_rank(bit_vector,bit):
@@ -237,7 +288,6 @@ class WaveletTree:
 		if len(node.alphabet) == 1:
 			return node.alphabet[0]
 		bit = node.bit_vector[i]
-		#print(bit)
 		if bit == '1':
 			child = node.right
 			rank = WaveletTree.binary_rank(node.bit_vector[:i],'1')
@@ -255,34 +305,126 @@ class WaveletTree:
 		return WaveletTree.find_leaf(child,c)
 
 	@staticmethod
-	def __select(node,c,occ_number):
+	def __select(node,c,occ_number,Optimized):
 
 		leaf = WaveletTree.find_leaf(node,c)
 		if leaf.parent:
 			bit = '1' if (leaf.parent.right == leaf) else '0'
-			return WaveletTree.__select_helper(leaf.parent,bit,occ_number)
+			return WaveletTree.__select_helper(leaf.parent,bit,occ_number,Optimized)
 		else:
 			# means there is only one alphabet
 			return occ_number
 
 	# clarks select
-	def binary_select(bit_vector,num_occurence,bit):
+
+
+	def counting_bit_in_vector(bit_vector,num_occurence,bit):
 		count = 0
 		for i,b in enumerate(bit_vector):
-			#print(i,b)
 			if b == bit:
 				count += 1
 				if count == num_occurence:
 					return i+1
+		return -1
+	def binary_select(node,num_occurence,bit,Optimized):
 
-	def __select_helper(node,bit,occ_number):
+		if Optimized:
 
-		position = WaveletTree.binary_select(node.bit_vector,occ_number,bit)
-		if node.parent is None:
+			if bit == '0':
+				number_of_0_found = 0
+				block_no = bisect_left(node.rank_chunk_0,(num_occurence,))
+				if block_no == 0:
+					remaining_0 = num_occurence
+					# binary search on the sub blocks of 0th list
+					sub_block_no = bisect_left(node.rank_sub_chunk_0[0],(remaining_0,))
+					if sub_block_no == 0:
+						sub_block_size = node.rank_sub_chunk_0[0][0][1]
+						position = WaveletTree.counting_bit_in_vector(node.bit_vector[0:sub_block_size],remaining_0,bit)
+						return position
+					else:
+						remaining_0 = num_occurence - node.rank_sub_chunk_0[0][sub_block_no-1][0]
+						position = node.rank_sub_chunk_0[0][sub_block_no-1][1]
+						end = node.rank_sub_chunk_0[0][sub_block_no][1]
+						position += WaveletTree.counting_bit_in_vector(node.bit_vector[position:end],remaining_0,bit)
+						return position
+				else:
+					#number_of_0_found = node.rank_chunk_0[block_no-1][0]
+					position = node.rank_chunk_0[block_no-1][1]
+					
+					remaining_0 = num_occurence - node.rank_chunk_0[block_no-1][0]
+					if block_no == len(node.rank_chunk_0):
+						return -1
+					else:
+						sub_block_no = bisect_left(node.rank_sub_chunk_0[block_no],(remaining_0,))
+						if sub_block_no == 0:
+							sub_block_size = node.rank_sub_chunk_0[block_no][0][1]
+							position += WaveletTree.counting_bit_in_vector(node.bit_vector[position:position+sub_block_size],remaining_0,bit)
+							return position
+						else:
+							sub_block_size = node.rank_sub_chunk_0[block_no][sub_block_no][1] - node.rank_sub_chunk_0[block_no][sub_block_no-1][1]
+							remaining_0 -= node.rank_sub_chunk_0[block_no][sub_block_no-1][0]
+							position += node.rank_sub_chunk_0[block_no][sub_block_no-1][1]
+							end = position + sub_block_size
+							position += WaveletTree.counting_bit_in_vector(node.bit_vector[position:end],remaining_0,bit)
+							return position
+			else:
+				number_of_1_found = 0
+				rank_chunk_1 = [(x[1]-x[0],x[1]) for x in node.rank_chunk_0]
+				block_no = bisect_left(rank_chunk_1,(num_occurence,))
+				if block_no == 0:
+					remaining_1 = num_occurence
+					# binary search on the sub blocks of 0th list
+					rank_sub_chunk_1 = [(x[1]-x[0],x[1]) for x in node.rank_sub_chunk_0[block_no]]
+					sub_block_no = bisect_left(rank_sub_chunk_1,(num_occurence,))
+					if sub_block_no == 0:
+						sub_block_size = rank_sub_chunk_1[0][1]
+						position = WaveletTree.counting_bit_in_vector(node.bit_vector[0:sub_block_size],remaining_1,bit)
+						return position
+					else:
+						remaining_1 = num_occurence - rank_sub_chunk_1[sub_block_no-1][0]
+						position = rank_sub_chunk_1[sub_block_no-1][1]
+						end = rank_sub_chunk_1[sub_block_no][1]
+						position += WaveletTree.counting_bit_in_vector(node.bit_vector[position:end+1],remaining_1,bit)
+						return position
+				else:
+					if block_no == len(node.rank_chunk_0):
+						return -1
+					rank_sub_chunk_1 = [(x[1]-x[0],x[1]) for x in node.rank_sub_chunk_0[block_no]]
+					#number_of_0_found = node.rank_chunk_0[block_no-1][0]
+					remaining_1 = num_occurence - rank_chunk_1[block_no-1][0]
+					if block_no == len(rank_chunk_1):
+						return -1
+					else:
+						sub_block_no = bisect_left(rank_sub_chunk_1,(remaining_1,))
+						position = node.rank_chunk_0[block_no-1][1]
+						if sub_block_no == 0:
+							sub_block_size = rank_sub_chunk_1[0][1]
+							position += WaveletTree.counting_bit_in_vector(node.bit_vector[position:position+sub_block_size],remaining_1,bit)
+							return position
+						else:
+							sub_block_size = rank_sub_chunk_1[sub_block_no][1] - rank_sub_chunk_1[sub_block_no-1][1]
+							remaining_1 -= rank_sub_chunk_1[sub_block_no-1][0]
+							position += rank_sub_chunk_1[sub_block_no-1][1]
+							end = position + sub_block_size
+							position += WaveletTree.counting_bit_in_vector(node.bit_vector[position:end],remaining_1,bit)
+							return position
+		else:
+			count = 0
+			for i,b in enumerate(node.bit_vector):
+				if b == bit:
+					count += 1
+					if count == num_occurence:
+						return i+1
+			return -1
+
+	def __select_helper(node,bit,occ_number,Optimized):
+
+		position = WaveletTree.binary_select(node,occ_number,bit,Optimized)
+		if node.parent is None or position == -1:
 			return position
 		else:
 			bit = '1' if (node.parent.right == node) else '0'
-			return WaveletTree.__select_helper(node.parent,bit,position)
+			return WaveletTree.__select_helper(node.parent,bit,position,Optimized)
 
 
 
