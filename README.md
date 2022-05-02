@@ -22,34 +22,34 @@
     
     **1.1** <u>Generate Random String of length N</u> : <br/>
     	Change line #ADDLINENUMBER in **InputGenerator.py** to 
-    	`input_generator = InputGenerator(None, None, {N}, {alphabet_set})`
-    	e.g.,
-    	`input_generator = InputGenerator(None, None, 10000, string.ascii_lowercase)`
+    	`input_generator = InputGenerator(None, None, {N}, {alphabet_set})`<br/>
+    	e.g.,<br/>
+    	`input_generator = InputGenerator(None, None, 10000, string.ascii_lowercase)`<br/>
     	alphabet_set can be any list to alphabets that the user wants to use. 
     <br><br>
     
     
     **1.2** <u>Generate Fibonacci String for input</u>: <br/>
-    	Change line #ADDLINENUMBER in **InputGenerator.py** to 					
-    	`input_generator = InputGenerator(None,{N})` 
+    	Change line #ADDLINENUMBER in **InputGenerator.py** to <br/>					
+    	`input_generator = InputGenerator(None,{N})`<br/> 
     	Here, N is the number of times you want the fibonacci iteration to happen. 
     <br><br>
     
     
     **1.3** <u>Read input from a file</u>: <br/>
-    	Change line #ADDLINENUMBER in **InputGenerator.py** to 
-    `	input_generator = InputGenerator('path/to/input.txt',None)` 
-    	Remember to place your `input.txt` in `testFiles/`.
+    	Change line #ADDLINENUMBER in **InputGenerator.py** to <br/>
+    `	input_generator = InputGenerator('path/to/input.txt',None)` <br/>
+    	Remember to place your `input.txt` in `testFiles/`.<br/>
     <br><br>
-    Finally, in the terminal run `python3 InputGenerator.py`
+    Finally, in the terminal run `python3 InputGenerator.py`<br/>
     **Note:** To run any other pre-generated string file (dna50mb.txt, proteins.50mb, tm29) place the contents of the file in `input.txt`
     
     
-    <br><br><br>
+    <br><br>
 2. **Generate Actual output:** <br/>
     Run `python3 OutputGenerator.py`
     
-    <br><br><br>
+    <br><br>
     
     
 3. **Check correctness of outputs:** <br/>
