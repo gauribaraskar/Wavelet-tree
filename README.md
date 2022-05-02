@@ -21,7 +21,7 @@
 1. **Generate input: <br/>**
     
     **1.1** <u>Generate Random String of length N</u> : <br/>
-    	Change line #ADDLINENUMBER in **InputGenerator.py** to 
+    	Change line #ADDLINENUMBER in **InputGenerator.py** to <br/>
     	`input_generator = InputGenerator(None, None, {N}, {alphabet_set})`<br/>
     	e.g.,<br/>
     	`input_generator = InputGenerator(None, None, 10000, string.ascii_lowercase)`<br/>
